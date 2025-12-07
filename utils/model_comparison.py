@@ -19,7 +19,7 @@ def compare_models(model_results):
     Args:
         model_results: Dictionary of model results
     """
-    st.subheader("📊 Model Performance Comparison")
+    st.subheader("Model Performance Comparison")
     
     if not model_results or len(model_results) == 0:
         st.warning("No models have been trained yet!")
@@ -47,7 +47,7 @@ def compare_models(model_results):
     comparison_df = comparison_df.drop('F1_numeric', axis=1)
     
     # Display comparison table
-    st.subheader("📋 Performance Metrics Comparison")
+    st.subheader("Performance Metrics Comparison")
     st.dataframe(comparison_df, use_container_width=True)
     
     # Highlight best model
@@ -57,7 +57,7 @@ def compare_models(model_results):
     # Download results
     csv = comparison_df.to_csv(index=False)
     st.download_button(
-        label="📥 Download Results as CSV",
+        label="Download Results as CSV",
         data=csv,
         file_name="model_comparison_results.csv",
         mime="text/csv"
@@ -65,15 +65,15 @@ def compare_models(model_results):
     
     # Visualizations
     st.markdown("---")
-    st.subheader("📈 Performance Visualizations")
+    st.subheader("Performance Visualizations")
     
     # Create tabs for different visualizations
     tabs = st.tabs([
-        "📊 Metrics Comparison",
-        "⏱️ Training Time",
-        "🎯 Confusion Matrices",
-        "📈 ROC Curves",
-        "📑 Detailed Reports"
+        "Metrics Comparison",
+        "Training Time",
+        "Confusion Matrices",
+        "ROC Curves",
+        "Detailed Reports"
     ])
     
     # Tab 1: Metrics Comparison
@@ -98,7 +98,7 @@ def compare_models(model_results):
 
 def plot_metrics_comparison(model_results):
     """Plot comparison of all metrics"""
-    st.subheader("📊 Metrics Comparison")
+    st.subheader("Metrics Comparison")
     
     # Prepare data
     models = list(model_results.keys())
@@ -130,7 +130,7 @@ def plot_metrics_comparison(model_results):
     st.plotly_chart(fig, use_container_width=True)
     
     # Radar chart
-    st.subheader("🎯 Radar Chart Comparison")
+    st.subheader("Radar Chart Comparison")
     
     selected_models = st.multiselect(
         "Select models to compare:",
@@ -167,7 +167,7 @@ def plot_metrics_comparison(model_results):
 
 def plot_training_time(model_results):
     """Plot training time comparison"""
-    st.subheader("⏱️ Training Time Comparison")
+    st.subheader("Training Time Comparison")
     
     models = list(model_results.keys())
     times = [model_results[model]['training_time'] for model in models]
@@ -202,7 +202,7 @@ def plot_training_time(model_results):
 
 def plot_confusion_matrices(model_results):
     """Plot confusion matrices for all models"""
-    st.subheader("🎯 Confusion Matrices")
+    st.subheader("Confusion Matrices")
     
     models = list(model_results.keys())
     
@@ -230,7 +230,7 @@ def plot_confusion_matrices(model_results):
         plt.close()
         
         # Normalized confusion matrix
-        st.subheader("📊 Normalized Confusion Matrix")
+        st.subheader("Normalized Confusion Matrix")
         
         cm_normalized = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
         
@@ -251,7 +251,7 @@ def plot_confusion_matrices(model_results):
         plt.close()
         
         # Calculate per-class metrics
-        st.subheader("📊 Per-Class Performance")
+        st.subheader("Per-Class Performance")
         
         n_classes = cm.shape[0]
         class_metrics = []
@@ -279,14 +279,14 @@ def plot_confusion_matrices(model_results):
 
 def plot_roc_curves(model_results):
     """Plot ROC curves for binary classification"""
-    st.subheader("📈 ROC Curves")
+    st.subheader("ROC Curves")
     
     # Check if binary classification
     first_result = list(model_results.values())[0]
     n_classes = len(np.unique(first_result['y_test']))
     
     if n_classes != 2:
-        st.info("📊 ROC curves are only available for binary classification problems.")
+        st.info("ROC curves are only available for binary classification problems.")
         st.write("For multiclass problems, consider using:")
         st.write("- One-vs-Rest (OvR) ROC curves")
         st.write("- Precision-Recall curves")
@@ -346,7 +346,7 @@ def plot_roc_curves(model_results):
     st.plotly_chart(fig, use_container_width=True)
     
     # ROC-AUC comparison
-    st.subheader("📊 ROC-AUC Scores")
+    st.subheader("ROC-AUC Scores")
     
     roc_data = []
     for model_name, results in model_results.items():
@@ -366,17 +366,17 @@ def plot_roc_curves(model_results):
             title='ROC-AUC Scores by Model',
             text='ROC-AUC',
             color='ROC-AUC',
-            color_continuous_scale='Viridis'
+            color_continuous_scale='Blues'
         )
         
         fig.update_traces(texttemplate='%{text:.3f}', textposition='outside')
-        fig.update_layout(height=400)
+        fig.update_layout(height=500)
         
         st.plotly_chart(fig, use_container_width=True)
 
 def display_detailed_reports(model_results):
     """Display detailed classification reports"""
-    st.subheader("📑 Detailed Classification Reports")
+    st.subheader("Detailed Classification Reports")
     
     models = list(model_results.keys())
     
@@ -404,7 +404,7 @@ def display_detailed_reports(model_results):
             st.metric("F1-Score", f"{results['f1_score']:.4f}")
         
         # Best hyperparameters
-        st.subheader("🔧 Best Hyperparameters")
+        st.subheader("Best Hyperparameters")
         params_df = pd.DataFrame([
             {'Parameter': k, 'Value': str(v)}
             for k, v in results['best_params'].items()
@@ -412,7 +412,7 @@ def display_detailed_reports(model_results):
         st.dataframe(params_df, use_container_width=True)
         
         # Classification report
-        st.subheader("📊 Classification Report")
+        st.subheader("Classification Report")
         
         class_report = results['classification_report']
         
@@ -434,7 +434,7 @@ def display_detailed_reports(model_results):
         
         # Macro and Weighted averages
         if 'macro avg' in class_report:
-            st.subheader("📈 Average Metrics")
+            st.subheader("Average Metrics")
             
             col1, col2 = st.columns(2)
             

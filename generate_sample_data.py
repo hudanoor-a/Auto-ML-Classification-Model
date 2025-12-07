@@ -9,12 +9,12 @@ import numpy as np
 # Set random seed for reproducibility
 np.random.seed(42)
 
-print("🚀 Generating comprehensive sample dataset...")
+print("Generating comprehensive sample dataset...")
 
 # Dataset size - make it larger for better training
 n_samples = 1000
 
-print(f"📊 Creating {n_samples} samples with realistic features...")
+print(f"Creating {n_samples} samples with realistic features...")
 
 # ============================================
 # CUSTOMER CHURN PREDICTION DATASET
@@ -186,15 +186,15 @@ elif churn_rate > 0.65:  # If too many churns
 output_path = 'data/customer_churn.csv'
 df.to_csv(output_path, index=False)
 
-print(f"\n✅ Dataset saved to: {output_path}")
-print(f"\n📊 Dataset Statistics:")
+print(f"\nDataset saved to: {output_path}")
+print(f"\nDataset Statistics:")
 print(f"   - Total Rows: {len(df):,}")
 print(f"   - Total Columns: {len(df.columns)}")
 print(f"   - Target Column: Churn")
-print(f"\n🎯 Class Distribution:")
+print(f"\nClass Distribution:")
 print(f"   - No Churn (0): {(df['Churn'] == 0).sum():,} ({(df['Churn'] == 0).sum() / len(df) * 100:.1f}%)")
 print(f"   - Churn (1): {(df['Churn'] == 1).sum():,} ({(df['Churn'] == 1).sum() / len(df) * 100:.1f}%)")
-print(f"\n⚠️  Data Quality Issues:")
+print(f"\nData Quality Issues:")
 print(f"   - Missing Values: {df.isnull().sum().sum():,} cells")
 print(f"   - Features with Missing Data:")
 for col in df.columns:
@@ -203,12 +203,12 @@ for col in df.columns:
         print(f"     • {col}: {missing} ({missing/len(df)*100:.1f}%)")
 print(f"   - Outliers: Present in Age, Monthly_Charges, Support_Tickets")
 print(f"   - Duplicate Rows: ~20 duplicate records")
-print(f"\n📁 Feature Types:")
+print(f"\nFeature Types:")
 print(f"   - Numerical: {len(df.select_dtypes(include=[np.number]).columns) - 1}")
 print(f"   - Categorical: {len(df.select_dtypes(include=['object']).columns)}")
 
 print("\n" + "="*60)
 print("✅ Sample dataset generation complete!")
 print("="*60)
-print("\n🚀 Upload 'data/customer_churn.csv' in the AutoML app")
+print("\nUpload 'data/customer_churn.csv' in the AutoML app")
 print("   and train all models successfully!")

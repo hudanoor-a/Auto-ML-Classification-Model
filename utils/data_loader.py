@@ -30,7 +30,7 @@ def display_dataset_info(df):
     Args:
         df: pandas DataFrame
     """
-    st.subheader("📋 Dataset Overview")
+    st.subheader("Dataset Overview")
     
     # Create columns for metrics
     col1, col2, col3, col4 = st.columns(4)
@@ -50,11 +50,11 @@ def display_dataset_info(df):
         st.metric("Categorical Features", len(categorical_cols))
     
     # Dataset preview
-    st.subheader("👀 Dataset Preview")
+    st.subheader("Dataset Preview")
     st.dataframe(df.head(10), use_container_width=True)
     
     # Column types
-    st.subheader("🔤 Column Types")
+    st.subheader("Column Types")
     col_types = pd.DataFrame({
         'Column': df.columns,
         'Data Type': [str(dtype) for dtype in df.dtypes.values],  # Convert to string
@@ -65,7 +65,7 @@ def display_dataset_info(df):
     st.dataframe(col_types, use_container_width=True)
     
     # Summary statistics
-    st.subheader("📊 Summary Statistics")
+    st.subheader("Summary Statistics")
     
     # Numerical columns
     if len(numerical_cols) > 0:
@@ -84,7 +84,7 @@ def display_dataset_info(df):
         st.dataframe(cat_summary, use_container_width=True)
     
     # Memory usage
-    st.subheader("💾 Memory Usage")
+    st.subheader("Memory Usage")
     memory_usage = df.memory_usage(deep=True).sum() / 1024**2  # Convert to MB
     st.info(f"Total Memory Usage: **{memory_usage:.2f} MB**")
 

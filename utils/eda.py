@@ -1,5 +1,5 @@
 """
-Exploratory Data Analysis Module
+Exploratory Data Analysis Module - Optimized for Speed
 """
 
 import streamlit as st
@@ -15,55 +15,11 @@ from scipy import stats
 sns.set_style("whitegrid")
 plt.rcParams['figure.figsize'] = (10, 6)
 
-def perform_eda(df, target_column):
-    """
-    Perform comprehensive exploratory data analysis
-    
-    Args:
-        df: pandas DataFrame
-        target_column: name of the target column
-    """
-    st.markdown("### 🔍 Comprehensive Data Analysis")
-    
-    # Create tabs for different analyses
-    tabs = st.tabs([
-        "📊 Missing Values",
-        "📉 Outlier Detection",
-        "🔗 Correlation Analysis",
-        "📈 Distribution Analysis",
-        "📊 Categorical Analysis",
-        "✂️ Train/Test Split"
-    ])
-    
-    # Tab 1: Missing Values Analysis
-    with tabs[0]:
-        missing_values_analysis(df)
-    
-    # Tab 2: Outlier Detection
-    with tabs[1]:
-        outlier_detection(df, target_column)
-    
-    # Tab 3: Correlation Analysis
-    with tabs[2]:
-        correlation_analysis(df, target_column)
-    
-    # Tab 4: Distribution Analysis
-    with tabs[3]:
-        distribution_analysis(df, target_column)
-    
-    # Tab 5: Categorical Analysis
-    with tabs[4]:
-        categorical_analysis(df, target_column)
-    
-    # Tab 6: Train/Test Split Info
-    with tabs[5]:
-        train_test_split_info(df)
+# --- CACHED HELPER FUNCTIONS (The main performance optimization) ---
 
-def missing_values_analysis(df):
-    """Analyze missing values in the dataset"""
-    st.subheader("📊 Missing Values Analysis")
-    
-    # Calculate missing values
+@st.cache_data(show_spinner="Calculating Missing Values...")
+def calculate_missing_data(df):
+    """Calculate and return missing value summary data frame."""
     missing_data = pd.DataFrame({
         'Column': df.columns,
         'Missing Count': df.isnull().sum().values,
@@ -72,67 +28,17 @@ def missing_values_analysis(df):
     missing_data = missing_data[missing_data['Missing Count'] > 0].sort_values(
         'Missing Percentage', ascending=False
     )
-    
-    if len(missing_data) == 0:
-        st.success("✅ No missing values found in the dataset!")
-    else:
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.dataframe(missing_data, use_container_width=True)
-            
-            # Global missing percentage
-            total_cells = df.shape[0] * df.shape[1]
-            total_missing = df.isnull().sum().sum()
-            global_missing_pct = (total_missing / total_cells * 100).round(2)
-            st.metric("Global Missing Percentage", f"{global_missing_pct}%")
-        
-        with col2:
-            # Visualization
-            fig = px.bar(
-                missing_data,
-                x='Column',
-                y='Missing Percentage',
-                title='Missing Values by Column',
-                labels={'Missing Percentage': 'Missing (%)'},
-                color='Missing Percentage',
-                color_continuous_scale='Reds'
-            )
-            st.plotly_chart(fig, use_container_width=True)
-        
-        # Heatmap of missing values
-        st.subheader("🗺️ Missing Values Heatmap")
-        fig, ax = plt.subplots(figsize=(12, 6))
-        sns.heatmap(df.isnull(), cbar=True, cmap='YlOrRd', ax=ax)
-        plt.title('Missing Values Heatmap')
-        st.pyplot(fig)
-        plt.close()
+    return missing_data
 
-def outlier_detection(df, target_column):
-    """Detect outliers using IQR and Z-score methods"""
-    st.subheader("📉 Outlier Detection")
-    
-    # Get numerical columns (excluding target)
-    numerical_cols = df.select_dtypes(include=[np.number]).columns.tolist()
-    if target_column in numerical_cols:
-        numerical_cols.remove(target_column)
-    
-    if len(numerical_cols) == 0:
-        st.warning("No numerical features found for outlier detection.")
-        return
-    
-    # Method selection
-    method = st.radio(
-        "Select outlier detection method:",
-        ["IQR Method", "Z-Score Method", "Both"],
-        horizontal=True
-    )
-    
+@st.cache_data(show_spinner="Running Outlier Detection...")
+def calculate_outlier_summary(df, numerical_cols):
+    """Calculate and return outlier summary for numerical columns."""
     outlier_summary = []
-    
     for col in numerical_cols:
         data = df[col].dropna()
-        
+        if len(data) == 0:
+            continue
+            
         # IQR Method
         Q1 = data.quantile(0.25)
         Q3 = data.quantile(0.75)
@@ -152,24 +58,134 @@ def outlier_detection(df, target_column):
             'Z-Score Outliers': zscore_outliers,
             'Z-Score %': f"{(zscore_outliers / len(data) * 100):.2f}%"
         })
+    return pd.DataFrame(outlier_summary)
+
+@st.cache_data(show_spinner="Calculating Correlation Matrix...")
+def calculate_correlation_matrix(df, numerical_cols):
+    """Calculate and return the correlation matrix."""
+    return df[numerical_cols].corr()
+
+# --- MAIN FUNCTIONS ---
+
+def perform_eda(df, target_column):
+    """
+    Perform comprehensive exploratory data analysis
+    """
+    st.markdown("### Comprehensive Data Analysis")
     
-    outlier_df = pd.DataFrame(outlier_summary)
+    # Create tabs for different analyses
+    tabs = st.tabs([
+        "Missing Values",
+        "Outlier Detection",
+        "Correlation Analysis",
+        "Distribution Analysis",
+        "Categorical Analysis",
+        "Train/Test Split"
+    ])
+    
+    # Wrap the content of each tab in a Streamlit spinner to improve perceived performance
+    with st.spinner("Loading EDA results..."):
+        # Tab 1: Missing Values Analysis
+        with tabs[0]:
+            missing_values_analysis(df)
+        
+        # Tab 2: Outlier Detection
+        with tabs[1]:
+            outlier_detection(df, target_column)
+        
+        # Tab 3: Correlation Analysis
+        with tabs[2]:
+            correlation_analysis(df, target_column)
+        
+        # Tab 4: Distribution Analysis
+        with tabs[3]:
+            distribution_analysis(df, target_column)
+        
+        # Tab 5: Categorical Analysis
+        with tabs[4]:
+            categorical_analysis(df, target_column)
+        
+        # Tab 6: Train/Test Split Info
+        with tabs[5]:
+            train_test_split_info(df)
+
+def missing_values_analysis(df):
+    """Analyze missing values in the dataset"""
+    st.subheader("Missing Values Analysis")
+    
+    # Use cached function
+    missing_data = calculate_missing_data(df)
+    
+    if len(missing_data) == 0:
+        st.success("No missing values found in the dataset!")
+    else:
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.dataframe(missing_data, use_container_width=True)
+            
+            # Global missing percentage (Quick calculation, no need to cache)
+            total_cells = df.shape[0] * df.shape[1]
+            total_missing = missing_data['Missing Count'].sum()
+            global_missing_pct = (total_missing / total_cells * 100).round(2)
+            st.metric("Global Missing Percentage", f"{global_missing_pct}%")
+        
+        with col2:
+            # Visualization (Plotly is fast)
+            fig = px.bar(
+                missing_data,
+                x='Column',
+                y='Missing Percentage',
+                title='Missing Values by Column',
+                labels={'Missing Percentage': 'Missing (%)'},
+                color='Missing Percentage',
+                color_continuous_scale='Reds'
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        
+        # Heatmap of missing values (Matplotlib is slower, but necessary)
+        st.subheader("Missing Values Heatmap")
+        fig, ax = plt.subplots(figsize=(12, 6))
+        sns.heatmap(df.isnull(), cbar=True, cmap='YlOrRd', ax=ax)
+        plt.title('Missing Values Heatmap')
+        st.pyplot(fig)
+        plt.close(fig) # Explicitly close the Matplotlib figure
+
+def outlier_detection(df, target_column):
+    """Detect outliers using IQR and Z-score methods"""
+    st.subheader("Outlier Detection")
+    
+    # Get numerical columns
+    numerical_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+    if target_column in numerical_cols:
+        numerical_cols.remove(target_column)
+    
+    if len(numerical_cols) == 0:
+        st.warning("No numerical features found for outlier detection.")
+        return
+    
+    # Use cached function to get the summary
+    outlier_df = calculate_outlier_summary(df, numerical_cols)
+    
     st.dataframe(outlier_df, use_container_width=True)
     
     # Visualize outliers for selected column
-    st.subheader("📊 Outlier Visualization")
+    st.subheader("Outlier Visualization")
+    # No need to cache the selectbox, it's just a widget
     selected_col = st.selectbox("Select column to visualize:", numerical_cols)
     
     col1, col2 = st.columns(2)
     
+    # Box plot (Plotly is fast)
     with col1:
-        # Box plot
         fig = px.box(df, y=selected_col, title=f'Box Plot: {selected_col}')
         st.plotly_chart(fig, use_container_width=True)
     
+    # Histogram with outliers highlighted (Plotly is fast)
     with col2:
-        # Histogram with outliers highlighted
         data = df[selected_col].dropna()
+        
+        # Recalculate IQR bounds *only* for the selected column's visualization
         Q1 = data.quantile(0.25)
         Q3 = data.quantile(0.75)
         IQR = Q3 - Q1
@@ -179,15 +195,15 @@ def outlier_detection(df, target_column):
         fig = go.Figure()
         fig.add_trace(go.Histogram(x=data, name='Normal', marker_color='lightblue'))
         fig.add_vline(x=lower_bound, line_dash="dash", line_color="red", 
-                     annotation_text="Lower Bound")
+                      annotation_text="Lower Bound", annotation_position="top left")
         fig.add_vline(x=upper_bound, line_dash="dash", line_color="red", 
-                     annotation_text="Upper Bound")
+                      annotation_text="Upper Bound", annotation_position="top right")
         fig.update_layout(title=f'Distribution with IQR Bounds: {selected_col}')
         st.plotly_chart(fig, use_container_width=True)
 
 def correlation_analysis(df, target_column):
     """Analyze correlations between features"""
-    st.subheader("🔗 Correlation Analysis")
+    st.subheader("Correlation Analysis")
     
     # Get numerical columns
     numerical_cols = df.select_dtypes(include=[np.number]).columns.tolist()
@@ -196,10 +212,10 @@ def correlation_analysis(df, target_column):
         st.warning("Need at least 2 numerical features for correlation analysis.")
         return
     
-    # Calculate correlation matrix
-    corr_matrix = df[numerical_cols].corr()
+    # Use cached function to get the correlation matrix
+    corr_matrix = calculate_correlation_matrix(df, numerical_cols)
     
-    # Heatmap
+    # Heatmap (Matplotlib is slower, but necessary)
     fig, ax = plt.subplots(figsize=(12, 10))
     mask = np.triu(np.ones_like(corr_matrix, dtype=bool))
     sns.heatmap(
@@ -216,11 +232,11 @@ def correlation_analysis(df, target_column):
     )
     plt.title('Correlation Matrix Heatmap', fontsize=16, fontweight='bold')
     st.pyplot(fig)
-    plt.close()
+    plt.close(fig) # Explicitly close the Matplotlib figure
     
     # Correlation with target
     if target_column in numerical_cols:
-        st.subheader(f"📊 Correlation with Target ({target_column})")
+        st.subheader(f"Correlation with Target ({target_column})")
         target_corr = corr_matrix[target_column].drop(target_column).sort_values(
             key=abs, ascending=False
         )
@@ -237,6 +253,7 @@ def correlation_analysis(df, target_column):
             )
         
         with col2:
+            # Bar plot (Plotly is fast)
             fig = px.bar(
                 x=target_corr.values,
                 y=target_corr.index,
@@ -248,8 +265,8 @@ def correlation_analysis(df, target_column):
             )
             st.plotly_chart(fig, use_container_width=True)
     
-    # High correlation pairs
-    st.subheader("⚠️ Highly Correlated Feature Pairs")
+    # High correlation pairs (Quick calculation, no need to cache)
+    st.subheader("Highly Correlated Feature Pairs")
     high_corr_pairs = []
     for i in range(len(corr_matrix.columns)):
         for j in range(i+1, len(corr_matrix.columns)):
@@ -268,7 +285,7 @@ def correlation_analysis(df, target_column):
 
 def distribution_analysis(df, target_column):
     """Analyze distributions of numerical features"""
-    st.subheader("📈 Distribution Analysis")
+    st.subheader("Distribution Analysis")
     
     numerical_cols = df.select_dtypes(include=[np.number]).columns.tolist()
     if target_column in numerical_cols:
@@ -278,13 +295,13 @@ def distribution_analysis(df, target_column):
         st.warning("No numerical features found.")
         return
     
-    # Select feature to visualize
+    # Select feature to visualize (widget interaction causes rerun, but plots are fast/caching helped)
     selected_feature = st.selectbox("Select feature:", numerical_cols)
     
     col1, col2 = st.columns(2)
     
     with col1:
-        # Histogram
+        # Histogram (Plotly is fast)
         fig = px.histogram(
             df,
             x=selected_feature,
@@ -295,15 +312,21 @@ def distribution_analysis(df, target_column):
         st.plotly_chart(fig, use_container_width=True)
     
     with col2:
-        # Q-Q plot for normality check
+        # Q-Q plot for normality check (Matplotlib is slower)
         fig, ax = plt.subplots(figsize=(8, 6))
-        stats.probplot(df[selected_feature].dropna(), dist="norm", plot=ax)
+        # Use a sample for very large datasets to speed up plotting, if necessary
+        data_to_plot = df[selected_feature].dropna()
+        if len(data_to_plot) > 100000:
+            data_to_plot = data_to_plot.sample(n=100000, random_state=42)
+            st.caption("Q-Q Plot generated from a sample of 100,000 rows for performance.")
+
+        stats.probplot(data_to_plot, dist="norm", plot=ax)
         ax.set_title(f'Q-Q Plot: {selected_feature}')
         st.pyplot(fig)
-        plt.close()
+        plt.close(fig) # Explicitly close the Matplotlib figure
     
-    # Statistical tests
-    st.subheader("📊 Statistical Summary")
+    # Statistical tests (Quick calculation, no need to cache)
+    st.subheader("Statistical Summary")
     col1, col2, col3 = st.columns(3)
     
     data = df[selected_feature].dropna()
@@ -322,14 +345,27 @@ def distribution_analysis(df, target_column):
     
     # Distribution by target (if categorical target)
     if target_column and df[target_column].dtype == 'object' or df[target_column].nunique() < 10:
-        st.subheader(f"📊 Distribution by {target_column}")
+        st.subheader(f"Distribution by {target_column}")
+        # Box plot (Plotly is fast)
         fig = px.box(df, x=target_column, y=selected_feature, 
-                    title=f'{selected_feature} by {target_column}')
+                     title=f'{selected_feature} by {target_column}')
         st.plotly_chart(fig, use_container_width=True)
+
+@st.cache_data(show_spinner="Calculating Categorical Value Counts...")
+def calculate_value_counts(df, selected_feature):
+    """Calculate and return value counts for a categorical feature."""
+    value_counts = df[selected_feature].value_counts()
+    return value_counts
+
+@st.cache_data(show_spinner="Calculating Cross-Tabulation...")
+def calculate_crosstab(df, selected_feature, target_column):
+    """Calculate and return cross-tabulation for categorical features."""
+    crosstab = pd.crosstab(df[selected_feature], df[target_column], normalize='index') * 100
+    return crosstab
 
 def categorical_analysis(df, target_column):
     """Analyze categorical features"""
-    st.subheader("📊 Categorical Features Analysis")
+    st.subheader("Categorical Features Analysis")
     
     categorical_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
     if target_column in categorical_cols:
@@ -342,8 +378,8 @@ def categorical_analysis(df, target_column):
     # Select feature to visualize
     selected_feature = st.selectbox("Select categorical feature:", categorical_cols)
     
-    # Value counts
-    value_counts = df[selected_feature].value_counts()
+    # Use cached function
+    value_counts = calculate_value_counts(df, selected_feature)
     
     col1, col2 = st.columns(2)
     
@@ -359,7 +395,7 @@ def categorical_analysis(df, target_column):
         )
     
     with col2:
-        # Bar plot
+        # Bar plot (Plotly is fast)
         fig = px.bar(
             x=value_counts.index,
             y=value_counts.values,
@@ -370,11 +406,12 @@ def categorical_analysis(df, target_column):
     
     # Relationship with target
     if target_column:
-        st.subheader(f"🔗 Relationship with {target_column}")
+        st.subheader(f"Relationship with {target_column}")
         
-        # Cross-tabulation
-        crosstab = pd.crosstab(df[selected_feature], df[target_column], normalize='index') * 100
+        # Use cached function
+        crosstab = calculate_crosstab(df, selected_feature, target_column)
         
+        # Stacked Bar Plot (Matplotlib is slower, but necessary)
         fig, ax = plt.subplots(figsize=(10, 6))
         crosstab.plot(kind='bar', stacked=True, ax=ax)
         plt.title(f'{selected_feature} vs {target_column}')
@@ -384,11 +421,11 @@ def categorical_analysis(df, target_column):
         plt.xticks(rotation=45)
         plt.tight_layout()
         st.pyplot(fig)
-        plt.close()
+        plt.close(fig) # Explicitly close the Matplotlib figure
 
 def train_test_split_info(df):
-    """Display information about train/test split"""
-    st.subheader("✂️ Train/Test Split Configuration")
+    """Display information about train/test split (No heavy lifting, no caching needed)"""
+    st.subheader("Train/Test Split Configuration")
     
     st.info("""
     The dataset will be split into training and testing sets during the preprocessing phase.
@@ -420,7 +457,7 @@ def train_test_split_info(df):
         test_samples = len(df) - train_samples
         st.metric("Testing Samples", f"{test_samples:,}")
     
-    # Visualization
+    # Visualization (Plotly is fast)
     fig = go.Figure(data=[go.Pie(
         labels=['Training Set', 'Test Set'],
         values=[train_size, test_size],

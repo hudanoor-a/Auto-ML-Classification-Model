@@ -23,14 +23,6 @@ def generate_report(dataset, target_column, detected_issues, preprocessing_decis
         preprocessing_decisions: Preprocessing decisions
         model_results: Model training results
     """
-    st.subheader("📄 Auto-Generated Final Report")
-    
-    # Report format selection
-    report_format = st.radio(
-        "Select report format:",
-        ["HTML", "Markdown", "PDF (via HTML)"],
-        horizontal=True
-    )
     
     # Generate report content
     report_content = generate_report_content(
@@ -40,45 +32,410 @@ def generate_report(dataset, target_column, detected_issues, preprocessing_decis
     
     # Display report preview
     st.markdown("---")
-    st.subheader("📋 Report Preview")
+    st.subheader("Report Preview")
     
     with st.expander("View Full Report", expanded=True):
         st.markdown(report_content)
     
     # Download options
     st.markdown("---")
-    st.subheader("💾 Download Report")
+    st.subheader("Download Report")
     
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     
     with col1:
         # Markdown download
         st.download_button(
-            label="📥 Download as Markdown",
+            label="Markdown",
             data=report_content,
             file_name=f"automl_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.md",
-            mime="text/markdown"
+            mime="text/markdown",
+            use_container_width=True
         )
     
     with col2:
         # HTML download
         html_content = markdown_to_html(report_content)
         st.download_button(
-            label="📥 Download as HTML",
+            label="HTML",
             data=html_content,
             file_name=f"automl_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html",
-            mime="text/html"
+            mime="text/html",
+            use_container_width=True
         )
     
     with col3:
+        # PDF download
+        try:
+            pdf_content = generate_pdf_report(
+                dataset, target_column, detected_issues, 
+                preprocessing_decisions, model_results
+            )
+            st.download_button(
+                label="PDF",
+                data=pdf_content,
+                file_name=f"automl_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
+                mime="application/pdf",
+                use_container_width=True
+            )
+        except ImportError:
+            st.error("PDF generation requires reportlab. Install it with: pip install reportlab")
+        except Exception as e:
+            st.error(f"PDF generation failed: {str(e)}")
+    
+    with col4:
         # CSV download (results only)
         csv_content = generate_results_csv(model_results)
         st.download_button(
-            label="📥 Download Results CSV",
+            label="CSV",
             data=csv_content,
             file_name=f"model_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-            mime="text/csv"
+            mime="text/csv",
+            use_container_width=True
         )
+
+def generate_pdf_report(dataset, target_column, detected_issues, preprocessing_decisions, model_results):
+    """
+    Generate PDF report using ReportLab
+    
+    Args:
+        dataset: Original dataset
+        target_column: Target column name
+        detected_issues: Detected issues dictionary
+        preprocessing_decisions: Preprocessing decisions
+        model_results: Model training results
+    
+    Returns:
+        bytes: PDF content
+    """
+    from reportlab.lib.pagesizes import letter, A4
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.units import inch
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
+    from reportlab.lib import colors
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+    
+    # Create a BytesIO buffer
+    buffer = BytesIO()
+    
+    # Create PDF document
+    doc = SimpleDocTemplate(buffer, pagesize=letter, 
+                           rightMargin=72, leftMargin=72,
+                           topMargin=72, bottomMargin=18)
+    
+    # Container for PDF elements
+    elements = []
+    
+    # Define styles
+    styles = getSampleStyleSheet()
+    
+    # Custom styles
+    title_style = ParagraphStyle(
+        'CustomTitle',
+        parent=styles['Heading1'],
+        fontSize=24,
+        textColor=colors.HexColor("#08294b"),
+        spaceAfter=30,
+        alignment=TA_CENTER
+    )
+    
+    heading_style = ParagraphStyle(
+        'CustomHeading',
+        parent=styles['Heading2'],
+        fontSize=16,
+        textColor=colors.HexColor('#34495e'),
+        spaceAfter=12,
+        spaceBefore=12
+    )
+    
+    subheading_style = ParagraphStyle(
+        'CustomSubHeading',
+        parent=styles['Heading3'],
+        fontSize=12,
+        textColor=colors.HexColor("#414C58"),
+        spaceAfter=6
+    )
+    
+    body_style = styles['BodyText']
+    body_style.fontSize = 10
+    body_style.leading = 14
+    
+    # Title
+    elements.append(Paragraph("AutoML Classification Report", title_style))
+    elements.append(Paragraph(f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", 
+                              styles['Normal']))
+    elements.append(Spacer(1, 0.3*inch))
+    
+    # 1. Executive Summary
+    elements.append(Paragraph("1. Executive Summary", heading_style))
+    elements.append(Paragraph(
+        "This report presents the results of an automated machine learning pipeline for classification tasks.",
+        body_style
+    ))
+    elements.append(Spacer(1, 0.2*inch))
+    
+    # Best model summary
+    if model_results:
+        best_model = max(model_results.items(), key=lambda x: x[1]['f1_score'])
+        best_model_name = best_model[0]
+        best_model_metrics = best_model[1]
+        
+        elements.append(Paragraph("Key Findings", subheading_style))
+        
+        summary_text = f"""
+        <b>Best Model:</b> {best_model_name}<br/>
+        <b>Accuracy:</b> {best_model_metrics['accuracy']:.4f}<br/>
+        <b>Precision:</b> {best_model_metrics['precision']:.4f}<br/>
+        <b>Recall:</b> {best_model_metrics['recall']:.4f}<br/>
+        <b>F1-Score:</b> {best_model_metrics['f1_score']:.4f}<br/>
+        <b>Training Time:</b> {best_model_metrics['training_time']:.2f} seconds
+        """
+        elements.append(Paragraph(summary_text, body_style))
+    
+    elements.append(Spacer(1, 0.3*inch))
+    
+    # 2. Dataset Overview
+    elements.append(Paragraph("2. Dataset Overview", heading_style))
+    
+    dataset_info = [
+        ['Metric', 'Value'],
+        ['Total Samples', f"{len(dataset):,}"],
+        ['Total Features', str(len(dataset.columns) - 1)],
+        ['Target Variable', target_column],
+        ['Number of Classes', str(dataset[target_column].nunique())]
+    ]
+    
+    dataset_table = Table(dataset_info, colWidths=[3*inch, 3*inch])
+    dataset_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#1A405E")),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 12),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor("#C3CED7")),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+    
+    elements.append(dataset_table)
+    elements.append(Spacer(1, 0.2*inch))
+    
+    # Feature types
+    numerical_cols = dataset.select_dtypes(include=[np.number]).columns.tolist()
+    categorical_cols = dataset.select_dtypes(include=['object', 'category']).columns.tolist()
+    
+    if target_column in numerical_cols:
+        numerical_cols.remove(target_column)
+    if target_column in categorical_cols:
+        categorical_cols.remove(target_column)
+    
+    elements.append(Paragraph(f"<b>Numerical Features:</b> {len(numerical_cols)}", body_style))
+    elements.append(Paragraph(f"<b>Categorical Features:</b> {len(categorical_cols)}", body_style))
+    elements.append(Spacer(1, 0.2*inch))
+    
+    # Class distribution
+    elements.append(Paragraph("Class Distribution", subheading_style))
+    class_dist = dataset[target_column].value_counts()
+    
+    class_data = [['Class', 'Count', 'Percentage']]
+    for cls, count in class_dist.items():
+        pct = (count / len(dataset)) * 100
+        class_data.append([str(cls), str(count), f"{pct:.2f}%"])
+    
+    class_table = Table(class_data, colWidths=[2*inch, 2*inch, 2*inch])
+    class_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#1A405E")),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 11),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor("#C3CED7")),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+    ]))
+    
+    elements.append(class_table)
+    elements.append(PageBreak())
+    
+    # 3. Data Quality Issues
+    elements.append(Paragraph("3. Data Quality Analysis", heading_style))
+    
+    # Missing values
+    elements.append(Paragraph("Missing Values", subheading_style))
+    missing_values = detected_issues.get('missing_values', [])
+    
+    if missing_values:
+        missing_data = [['Feature', 'Missing Count', 'Missing %']]
+        for mv in missing_values:
+            missing_data.append([
+                mv['column'], 
+                str(mv['missing_count']), 
+                f"{mv['missing_percentage']:.2f}%"
+            ])
+        
+        missing_table = Table(missing_data, colWidths=[2.5*inch, 2*inch, 1.5*inch])
+        missing_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#1A405E")),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor("#C3CED7"))
+        ]))
+        elements.append(missing_table)
+    else:
+        elements.append(Paragraph("✓ No missing values detected.", body_style))
+    
+    elements.append(Spacer(1, 0.2*inch))
+    
+    # Outliers
+    elements.append(Paragraph("Outliers", subheading_style))
+    outliers = detected_issues.get('outliers', [])
+    
+    if outliers:
+        outlier_data = [['Feature', 'Outlier Count', 'Outlier %']]
+        for out in outliers:
+            outlier_data.append([
+                out['column'], 
+                str(out['outlier_count']), 
+                f"{out['outlier_percentage']:.2f}%"
+            ])
+        
+        outlier_table = Table(outlier_data, colWidths=[2.5*inch, 2*inch, 1.5*inch])
+        outlier_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#1A405E")),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor("#C3CED7"))
+        ]))
+        elements.append(outlier_table)
+    else:
+        elements.append(Paragraph("✓ No significant outliers detected.", body_style))
+    
+    elements.append(Spacer(1, 0.2*inch))
+    
+    # Class imbalance
+    elements.append(Paragraph("Class Imbalance", subheading_style))
+    imbalance = detected_issues.get('class_imbalance')
+    if imbalance and imbalance.get('is_imbalanced'):
+        elements.append(Paragraph(
+            f"⚠ Class imbalance detected with ratio {imbalance['imbalance_ratio']:.2f}:1", 
+            body_style
+        ))
+    else:
+        elements.append(Paragraph("✓ Classes are relatively balanced.", body_style))
+    
+    elements.append(PageBreak())
+    
+    # 4. Model Performance
+    elements.append(Paragraph("4. Model Performance Comparison", heading_style))
+    
+    if model_results:
+        # Sort by F1-score
+        sorted_models = sorted(model_results.items(), key=lambda x: x[1]['f1_score'], reverse=True)
+        
+        model_data = [['Model', 'Accuracy', 'Precision', 'Recall', 'F1-Score', 'Time (s)']]
+        
+        for model_name, results in sorted_models:
+            model_data.append([
+                model_name,
+                f"{results['accuracy']:.4f}",
+                f"{results['precision']:.4f}",
+                f"{results['recall']:.4f}",
+                f"{results['f1_score']:.4f}",
+                f"{results['training_time']:.2f}"
+            ])
+        
+        model_table = Table(model_data, colWidths=[1.5*inch, 1*inch, 1*inch, 1*inch, 1*inch, 0.8*inch])
+        model_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#1A405E")),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor("#C3CED7"))
+        ]))
+        
+        elements.append(model_table)
+    
+    elements.append(Spacer(1, 0.3*inch))
+    
+    # 5. Best Model Details
+    if model_results:
+        elements.append(Paragraph("5. Best Model Recommendation", heading_style))
+        elements.append(Paragraph(f"Recommended Model: <b>{best_model_name}</b>", subheading_style))
+        
+        justification = f"""
+        The {best_model_name} was selected based on:<br/>
+        <br/>
+        • <b>Highest F1-Score:</b> {best_model_metrics['f1_score']:.4f}<br/>
+        • <b>Strong Accuracy:</b> {best_model_metrics['accuracy']:.4f}<br/>
+        • <b>Balanced Performance:</b> Good precision-recall trade-off<br/>
+        • <b>Training Efficiency:</b> {best_model_metrics['training_time']:.2f} seconds<br/>
+        """
+        
+        elements.append(Paragraph(justification, body_style))
+        elements.append(Spacer(1, 0.2*inch))
+        
+        # Hyperparameters
+        elements.append(Paragraph("Best Hyperparameters:", subheading_style))
+        
+        param_data = [['Parameter', 'Value']]
+        for param, value in best_model_metrics['best_params'].items():
+            param_data.append([param, str(value)])
+        
+        param_table = Table(param_data, colWidths=[3*inch, 3*inch])
+        param_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#1A405E")),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor("#C3CED7"))
+        ]))
+        
+        elements.append(param_table)
+    
+    elements.append(Spacer(1, 0.3*inch))
+    
+    # 6. Recommendations
+    elements.append(Paragraph("6. Recommendations & Next Steps", heading_style))
+    
+    recommendations = """
+    <b>Recommendations for Improvement:</b><br/>
+    • Collect more training data to improve generalization<br/>
+    • Explore advanced feature engineering techniques<br/>
+    • Try ensemble methods (stacking, voting)<br/>
+    • Perform k-fold cross-validation<br/>
+    • Monitor model performance in production<br/>
+    <br/>
+    <b>Next Steps:</b><br/>
+    • Deploy the best model to production environment<br/>
+    • Set up monitoring and logging infrastructure<br/>
+    • Create feedback loop for continuous improvement<br/>
+    • Document model assumptions and limitations<br/>
+    """
+    
+    elements.append(Paragraph(recommendations, body_style))
+    
+    # Footer
+    elements.append(Spacer(1, 0.5*inch))
+    elements.append(Paragraph(
+        "<i>This report was automatically generated by the AutoML Classification System.</i>", 
+        styles['Italic']
+    ))
+    
+    # Build PDF
+    doc.build(elements)
+    
+    # Get PDF content
+    pdf_content = buffer.getvalue()
+    buffer.close()
+    
+    return pdf_content
 
 def generate_report_content(dataset, target_column, detected_issues, 
                            preprocessing_decisions, model_results):
@@ -180,7 +537,7 @@ trained multiple classification models, and identified the best-performing model
         for mv in missing_values:
             report += f"| {mv['column']} | {mv['missing_count']} | {mv['missing_percentage']:.2f}% |\n"
     else:
-        report += "✅ No missing values detected.\n"
+        report += "No missing values detected.\n"
     
     report += "\n### Outliers\n\n"
     
@@ -193,15 +550,15 @@ trained multiple classification models, and identified the best-performing model
         for out in outliers:
             report += f"| {out['column']} | {out['outlier_count']} | {out['outlier_percentage']:.2f}% |\n"
     else:
-        report += "✅ No significant outliers detected.\n"
+        report += "No significant outliers detected.\n"
     
     report += "\n### Class Imbalance\n\n"
     
     imbalance = detected_issues.get('class_imbalance')
     if imbalance and imbalance.get('is_imbalanced'):
-        report += f"⚠️ Class imbalance detected with ratio {imbalance['imbalance_ratio']:.2f}:1\n"
+        report += f"Class imbalance detected with ratio {imbalance['imbalance_ratio']:.2f}:1\n"
     else:
-        report += "✅ Classes are relatively balanced.\n"
+        report += "Classes are relatively balanced.\n"
     
     # Detected issues
     report += f"""

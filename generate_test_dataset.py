@@ -13,12 +13,12 @@ np.random.seed(42)
 # Create datasets directory if it doesn't exist
 Path("datasets").mkdir(exist_ok=True)
 
-print("🚀 Generating comprehensive test dataset...")
+print("Generating comprehensive test dataset...")
 
 # Dataset size
 n_samples = 2000
 
-print(f"📊 Creating {n_samples} samples with multiple features and issues...")
+print(f"Creating {n_samples} samples with multiple features and issues...")
 
 # ============================================
 # CUSTOMER CHURN PREDICTION DATASET
@@ -195,33 +195,33 @@ for col in numeric_cols:
 output_path = 'datasets/customer_churn_test.csv'
 df.to_csv(output_path, index=False)
 
-print(f"\n✅ Dataset saved to: {output_path}")
-print(f"\n📊 Dataset Statistics:")
+print(f"\nDataset saved to: {output_path}")
+print(f"\nDataset Statistics:")
 print(f"   - Total Rows: {len(df):,}")
 print(f"   - Total Columns: {len(df.columns)}")
 print(f"   - Target Column: Churn")
-print(f"\n🎯 Class Distribution:")
+print(f"\nClass Distribution:")
 print(f"   - No Churn (0): {(df['Churn'] == 0).sum():,} ({(df['Churn'] == 0).sum() / len(df) * 100:.1f}%)")
 print(f"   - Churn (1): {(df['Churn'] == 1).sum():,} ({(df['Churn'] == 1).sum() / len(df) * 100:.1f}%)")
-print(f"\n⚠️  Issues Intentionally Included:")
+print(f"\nIssues Intentionally Included:")
 print(f"   - Missing Values: {df.isnull().sum().sum():,} cells")
 print(f"   - Outliers: Present in Age, Monthly_Charges, Support_Tickets")
 print(f"   - Class Imbalance: Churn is imbalanced ({(df['Churn'] == 1).sum() / len(df) * 100:.1f}% minority class)")
 print(f"   - High Cardinality: City column has 50 unique values")
 print(f"   - Constant Features: Account_Status, Company_Name")
 print(f"   - Duplicate Rows: ~60 duplicate records")
-print(f"\n📁 Feature Types:")
+print(f"\nFeature Types:")
 print(f"   - Numerical: {len(df.select_dtypes(include=[np.number]).columns) - 1} (excluding Churn)")
 print(f"   - Categorical: {len(df.select_dtypes(include=['object']).columns)}")
 
 print("\n" + "="*60)
 print("✅ Test dataset generation complete!")
 print("="*60)
-print("\n🚀 You can now:")
+print("\nYou can now:")
 print("   1. Upload 'datasets/customer_churn_test.csv' in the app")
 print("   2. Select 'Churn' as the target column")
 print("   3. Test all EDA, issue detection, and preprocessing features!")
-print("\n📊 This dataset will trigger:")
+print("\nThis dataset will trigger:")
 print("   ✓ Missing value detection and handling")
 print("   ✓ Outlier detection and treatment")
 print("   ✓ Class imbalance warning and SMOTE option")

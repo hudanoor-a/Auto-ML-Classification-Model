@@ -106,7 +106,7 @@ def train_models(processed_data):
     Returns:
         dict: Results for all trained models
     """
-    st.subheader("🎯 Model Training Configuration")
+    st.subheader("Model Training Configuration")
     
     # Extract data
     X_train = processed_data['X_train']
@@ -127,8 +127,8 @@ def train_models(processed_data):
     
     # Check for NaN values
     if X_train_df.isnull().any().any():
-        st.error("❌ Training data contains missing values!")
-        st.warning("⚠️ Applying automatic imputation to fix missing values...")
+        st.error("Training data contains missing values!")
+        st.warning("Applying automatic imputation to fix missing values...")
         
         # Force imputation
         from sklearn.impute import SimpleImputer
@@ -136,12 +136,12 @@ def train_models(processed_data):
         X_train = imputer.fit_transform(X_train_df)
         X_test = imputer.transform(X_test_df)
         
-        st.success("✅ Missing values imputed automatically!")
+        st.success("Missing values imputed automatically!")
     
     # Ensure no NaN in target
     if pd.Series(y_train).isnull().any():
-        st.error("❌ Target variable contains missing values! Cannot proceed.")
-        st.info("💡 Please go back to preprocessing and ensure missing values are handled.")
+        st.error("Target variable contains missing values! Cannot proceed.")
+        st.info("Please go back to preprocessing and ensure missing values are handled.")
         return None
     
     # Calculate appropriate CV folds based on data
@@ -163,7 +163,7 @@ def train_models(processed_data):
     
     with col2:
         if max_cv_folds < 2:
-            st.warning(f"⚠️ Dataset too small for cross-validation. Using simple train/test split.")
+            st.warning(f"Dataset too small for cross-validation. Using simple train/test split.")
             cv_folds = 2
             optimization_method = "No Optimization"  # Force no optimization
         else:
@@ -195,7 +195,7 @@ def train_models(processed_data):
     # Class weights
     use_class_weights = imbalance_handling == 'Apply class weights'
     
-    if st.button("🚀 Start Training", type="primary"):
+    if st.button("Start Training", type="primary"):
         model_results = {}
         
         # Progress bar
@@ -237,9 +237,9 @@ def train_models(processed_data):
                 model_results[model_name] = result
                 
             except Exception as e:
-                st.error(f"❌ Error training {model_name}: {str(e)}")
+                st.error(f"Error training {model_name}: {str(e)}")
         
-        status_text.write("✅ Training completed!")
+        status_text.write("Training completed!")
         
         return model_results
     
