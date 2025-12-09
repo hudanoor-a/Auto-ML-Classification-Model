@@ -16,11 +16,13 @@ from sklearn.svm import SVC
 from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
-    confusion_matrix, roc_auc_score, roc_curve, classification_report
+    confusion_matrix, roc_auc_score, roc_curve, classification_report,
+    matthews_corrcoef  # ADDED: MCC metric
 )
 import plotly.graph_objects as go
 import plotly.express as px
 from sklearn.utils.multiclass import type_of_target
+from sklearn.preprocessing import label_binarize  # ADDED: For multiclass ROC
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -238,6 +240,8 @@ def train_models(processed_data):
                 
             except Exception as e:
                 st.error(f"Error training {model_name}: {str(e)}")
+                import traceback
+                st.error(traceback.format_exc())
         
         status_text.write("Training completed!")
         
@@ -290,21 +294,52 @@ def train_single_model(model_name, X_train, X_test, y_train, y_test,
     # Confusion matrix
     cm = confusion_matrix(y_test, y_pred)
     
-    # ROC-AUC (for binary classification)
+    # ============ ADDED: Matthews Correlation Coefficient (MCC) ============
+    try:
+        mcc = matthews_corrcoef(y_test, y_pred)
+    except Exception as e:
+        st.warning(f"Could not calculate MCC for {model_name}: {str(e)}")
+        mcc = None
+    
+    # ============ ENHANCED: ROC-AUC for both binary and multiclass ============
     roc_auc = None
+    
     if n_classes == 2:
+        # Binary classification
         try:
             if hasattr(best_model, 'predict_proba'):
                 y_pred_proba = best_model.predict_proba(X_test)[:, 1]
             else:
                 y_pred_proba = y_pred
             roc_auc = roc_auc_score(y_test, y_pred_proba)
-        except:
+        except Exception as e:
+            st.warning(f"Could not calculate ROC-AUC for {model_name}: {str(e)}")
+            roc_auc = None
+    
+    elif n_classes > 2:
+        # Multiclass classification - calculate macro-average ROC-AUC
+        try:
+            if hasattr(best_model, 'predict_proba'):
+                y_pred_proba = best_model.predict_proba(X_test)
+                
+                # Use One-vs-Rest (OvR) macro-average
+                roc_auc = roc_auc_score(
+                    y_test, 
+                    y_pred_proba, 
+                    multi_class='ovr',
+                    average='macro'
+                )
+            else:
+                # Model doesn't support probabilities
+                roc_auc = None
+        except Exception as e:
+            st.warning(f"Could not calculate multiclass ROC-AUC for {model_name}: {str(e)}")
             roc_auc = None
     
     # Classification report
     class_report = classification_report(y_test, y_pred, output_dict=True, zero_division=0)
     
+    # ============ ADDED: Store X_test for multiclass ROC curve plotting ============
     return {
         'model': best_model,
         'best_params': best_params,
@@ -313,12 +348,14 @@ def train_single_model(model_name, X_train, X_test, y_train, y_test,
         'recall': recall,
         'f1_score': f1,
         'confusion_matrix': cm,
-        'roc_auc': roc_auc,
+        'roc_auc': roc_auc,  # Now supports both binary and multiclass
+        'mcc': mcc,  # ADDED: Matthews Correlation Coefficient
         'training_time': training_time,
         'classification_report': class_report,
         'y_pred': y_pred,
         'y_test': y_test,
-        'X_test': X_test  # Add X_test for ROC curve calculation
+        'X_test': X_test,  # ADDED: Required for multiclass ROC curve plotting
+        'n_classes': n_classes  # ADDED: Store number of classes for reference
     }
 
 def get_model_and_params(model_name, use_class_weights):
@@ -366,6 +403,7 @@ def get_model_and_params(model_name, use_class_weights):
         }
     
     elif model_name == 'Support Vector Machine':
+        # IMPORTANT: Enable probability=True for ROC curves
         model = SVC(class_weight=class_weight, random_state=42, probability=True)
         param_grid = {
             'C': [0.1, 1, 10],

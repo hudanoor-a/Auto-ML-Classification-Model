@@ -1,6 +1,6 @@
 """
 Report Generation Module
-Generate comprehensive final reports
+Generate comprehensive final reports with enhanced metrics
 """
 
 import streamlit as st
@@ -74,7 +74,7 @@ def generate_report(dataset, target_column, detected_issues, preprocessing_decis
             st.download_button(
                 label="PDF",
                 data=pdf_content,
-                file_name=f"automl_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
+                file_name="AutoML Model Comparison Report.pdf",
                 mime="application/pdf",
                 use_container_width=True
             )
@@ -94,19 +94,46 @@ def generate_report(dataset, target_column, detected_issues, preprocessing_decis
             use_container_width=True
         )
 
+def get_best_model(model_results):
+    """
+    Get the best model using the tiebreaker hierarchy:
+    F1-Score > ROC-AUC > MCC > Accuracy > Training Time
+    """
+    if not model_results:
+        return None, None
+    
+    # Convert to list for sorting
+    models_list = []
+    for model_name, results in model_results.items():
+        models_list.append({
+            'name': model_name,
+            'f1_score': results['f1_score'],
+            'roc_auc': results['roc_auc'] if results['roc_auc'] is not None else -1,
+            'mcc': results.get('mcc', -1) if results.get('mcc') is not None else -1,
+            'accuracy': results['accuracy'],
+            'training_time': results['training_time'],
+            'results': results
+        })
+    
+    # Sort by tiebreaker hierarchy
+    sorted_models = sorted(
+        models_list,
+        key=lambda x: (
+            x['f1_score'],           # Higher is better
+            x['roc_auc'],            # Higher is better
+            x['mcc'],                # Higher is better
+            x['accuracy'],           # Higher is better
+            -x['training_time']      # Lower is better (negated for sorting)
+        ),
+        reverse=True
+    )
+    
+    best = sorted_models[0]
+    return best['name'], best['results']
+
 def generate_pdf_report(dataset, target_column, detected_issues, preprocessing_decisions, model_results):
     """
-    Generate PDF report using ReportLab
-    
-    Args:
-        dataset: Original dataset
-        target_column: Target column name
-        detected_issues: Detected issues dictionary
-        preprocessing_decisions: Preprocessing decisions
-        model_results: Model training results
-    
-    Returns:
-        bytes: PDF content
+    Generate PDF report using ReportLab with enhanced metrics
     """
     from reportlab.lib.pagesizes import letter, A4
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -174,11 +201,9 @@ def generate_pdf_report(dataset, target_column, detected_issues, preprocessing_d
     ))
     elements.append(Spacer(1, 0.2*inch))
     
-    # Best model summary
+    # Best model summary using enhanced selection
     if model_results:
-        best_model = max(model_results.items(), key=lambda x: x[1]['f1_score'])
-        best_model_name = best_model[0]
-        best_model_metrics = best_model[1]
+        best_model_name, best_model_metrics = get_best_model(model_results)
         
         elements.append(Paragraph("Key Findings", subheading_style))
         
@@ -188,8 +213,16 @@ def generate_pdf_report(dataset, target_column, detected_issues, preprocessing_d
         <b>Precision:</b> {best_model_metrics['precision']:.4f}<br/>
         <b>Recall:</b> {best_model_metrics['recall']:.4f}<br/>
         <b>F1-Score:</b> {best_model_metrics['f1_score']:.4f}<br/>
-        <b>Training Time:</b> {best_model_metrics['training_time']:.2f} seconds
         """
+        
+        if best_model_metrics['roc_auc'] is not None:
+            summary_text += f"<b>ROC-AUC:</b> {best_model_metrics['roc_auc']:.4f}<br/>"
+        
+        if best_model_metrics.get('mcc') is not None:
+            summary_text += f"<b>MCC:</b> {best_model_metrics.get('mcc'):.4f}<br/>"
+        
+        summary_text += f"<b>Training Time:</b> {best_model_metrics['training_time']:.2f} seconds"
+        
         elements.append(Paragraph(summary_text, body_style))
     
     elements.append(Spacer(1, 0.3*inch))
@@ -197,12 +230,15 @@ def generate_pdf_report(dataset, target_column, detected_issues, preprocessing_d
     # 2. Dataset Overview
     elements.append(Paragraph("2. Dataset Overview", heading_style))
     
+    n_classes = dataset[target_column].nunique()
+    
     dataset_info = [
         ['Metric', 'Value'],
         ['Total Samples', f"{len(dataset):,}"],
         ['Total Features', str(len(dataset.columns) - 1)],
         ['Target Variable', target_column],
-        ['Number of Classes', str(dataset[target_column].nunique())]
+        ['Number of Classes', str(n_classes)],
+        ['Problem Type', 'Binary Classification' if n_classes == 2 else 'Multiclass Classification']
     ]
     
     dataset_table = Table(dataset_info, colWidths=[3*inch, 3*inch])
@@ -213,7 +249,7 @@ def generate_pdf_report(dataset, target_column, detected_issues, preprocessing_d
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, 0), 12),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor("#C3CED7")),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor("#E5EBEF")),
         ('GRID', (0, 0), (-1, -1), 1, colors.black)
     ]))
     
@@ -250,7 +286,7 @@ def generate_pdf_report(dataset, target_column, detected_issues, preprocessing_d
         ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
         ('FONTSIZE', (0, 0), (-1, 0), 11),
         ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor("#C3CED7")),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor("#E5EBEF")),
         ('GRID', (0, 0), (-1, -1), 1, colors.black)
     ]))
     
@@ -280,7 +316,7 @@ def generate_pdf_report(dataset, target_column, detected_issues, preprocessing_d
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('GRID', (0, 0), (-1, -1), 1, colors.black),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor("#C3CED7"))
+            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor("#E5EBEF"))
         ]))
         elements.append(missing_table)
     else:
@@ -308,7 +344,7 @@ def generate_pdf_report(dataset, target_column, detected_issues, preprocessing_d
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('GRID', (0, 0), (-1, -1), 1, colors.black),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor("#C3CED7"))
+            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor("#E5EBEF"))
         ]))
         elements.append(outlier_table)
     else:
@@ -329,54 +365,93 @@ def generate_pdf_report(dataset, target_column, detected_issues, preprocessing_d
     
     elements.append(PageBreak())
     
-    # 4. Model Performance
+    # 4. Model Performance with Enhanced Metrics
     elements.append(Paragraph("4. Model Performance Comparison", heading_style))
     
     if model_results:
-        # Sort by F1-score
-        sorted_models = sorted(model_results.items(), key=lambda x: x[1]['f1_score'], reverse=True)
+        # Sort by tiebreaker hierarchy
+        sorted_models_list = []
+        for name, results in model_results.items():
+            sorted_models_list.append((name, results))
         
-        model_data = [['Model', 'Accuracy', 'Precision', 'Recall', 'F1-Score', 'Time (s)']]
+        sorted_models_list.sort(
+            key=lambda x: (
+                x[1]['f1_score'],
+                x[1]['roc_auc'] if x[1]['roc_auc'] is not None else -1,
+                x[1].get('mcc', -1) if x[1].get('mcc') is not None else -1,
+                x[1]['accuracy'],
+                -x[1]['training_time']
+            ),
+            reverse=True
+        )
         
-        for model_name, results in sorted_models:
+        # Build table with enhanced metrics
+        model_data = [['Model', 'Acc', 'Prec', 'Recall', 'F1', 'ROC-AUC', 'MCC', 'Time(s)']]
+        
+        for model_name, results in sorted_models_list:
+            roc_auc_str = f"{results['roc_auc']:.3f}" if results['roc_auc'] is not None else 'N/A'
+            mcc_str = f"{results.get('mcc'):.3f}" if results.get('mcc') is not None else 'N/A'
+            
             model_data.append([
                 model_name,
-                f"{results['accuracy']:.4f}",
-                f"{results['precision']:.4f}",
-                f"{results['recall']:.4f}",
-                f"{results['f1_score']:.4f}",
-                f"{results['training_time']:.2f}"
+                f"{results['accuracy']:.3f}",
+                f"{results['precision']:.3f}",
+                f"{results['recall']:.3f}",
+                f"{results['f1_score']:.3f}",
+                roc_auc_str,
+                mcc_str,
+                f"{results['training_time']:.1f}"
             ])
         
-        model_table = Table(model_data, colWidths=[1.5*inch, 1*inch, 1*inch, 1*inch, 1*inch, 0.8*inch])
+        model_table = Table(model_data, colWidths=[1.2*inch, 0.6*inch, 0.6*inch, 0.6*inch, 
+                                                    0.6*inch, 0.7*inch, 0.6*inch, 0.6*inch])
         model_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#1A405E")),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
             ('GRID', (0, 0), (-1, -1), 1, colors.black),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor("#C3CED7"))
+            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor("#E5EBEF"))
         ]))
         
         elements.append(model_table)
+        
+        # Add metric descriptions
+        elements.append(Spacer(1, 0.2*inch))
+        elements.append(Paragraph("Metric Descriptions:", subheading_style))
+        
+        metrics_desc = """
+        <b>ROC-AUC:</b> Area under ROC curve - discrimination ability (0.5-1.0)<br/>
+        <b>MCC:</b> Matthews Correlation Coefficient - balanced measure (-1 to +1)<br/>
+        """
+        elements.append(Paragraph(metrics_desc, body_style))
     
     elements.append(Spacer(1, 0.3*inch))
     
-    # 5. Best Model Details
+    # 5. Best Model Details with Enhanced Selection
     if model_results:
         elements.append(Paragraph("5. Best Model Recommendation", heading_style))
+        best_model_name, best_model_metrics = get_best_model(model_results)
+        
         elements.append(Paragraph(f"Recommended Model: <b>{best_model_name}</b>", subheading_style))
         
+        # Prepare safe display strings to avoid conditional format specifiers inside f-strings
+        roc_auc_disp = f"{best_model_metrics['roc_auc']:.4f}" if best_model_metrics.get('roc_auc') is not None else "N/A"
+        mcc_disp = f"{best_model_metrics.get('mcc'):.4f}" if best_model_metrics.get('mcc') is not None else "N/A"
+
         justification = f"""
-        The {best_model_name} was selected based on:<br/>
+        The {best_model_name} was selected using a tiebreaker hierarchy:<br/>
         <br/>
-        • <b>Highest F1-Score:</b> {best_model_metrics['f1_score']:.4f}<br/>
-        • <b>Strong Accuracy:</b> {best_model_metrics['accuracy']:.4f}<br/>
-        • <b>Balanced Performance:</b> Good precision-recall trade-off<br/>
-        • <b>Training Efficiency:</b> {best_model_metrics['training_time']:.2f} seconds<br/>
+        1. <b>F1-Score:</b> {best_model_metrics['f1_score']:.4f} (primary metric)<br/>
+        2. <b>ROC-AUC:</b> {roc_auc_disp} (discrimination ability)<br/>
+        3. <b>MCC:</b> {mcc_disp} (balanced measure)<br/>
+        4. <b>Accuracy:</b> {best_model_metrics['accuracy']:.4f} (overall correctness)<br/>
+        5. <b>Training Time:</b> {best_model_metrics['training_time']:.2f}s (efficiency)<br/>
+        <br/>
+        This hierarchy ensures optimal model selection even when performance metrics are equal.
         """
-        
+
         elements.append(Paragraph(justification, body_style))
         elements.append(Spacer(1, 0.2*inch))
         
@@ -394,7 +469,7 @@ def generate_pdf_report(dataset, target_column, detected_issues, preprocessing_d
             ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('GRID', (0, 0), (-1, -1), 1, colors.black),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor("#C3CED7"))
+            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor("#E5EBEF"))
         ]))
         
         elements.append(param_table)
@@ -404,6 +479,9 @@ def generate_pdf_report(dataset, target_column, detected_issues, preprocessing_d
     # 6. Recommendations
     elements.append(Paragraph("6. Recommendations & Next Steps", heading_style))
     
+    # Check if multiclass for specific recommendations
+    n_classes = dataset[target_column].nunique()
+    
     recommendations = """
     <b>Recommendations for Improvement:</b><br/>
     • Collect more training data to improve generalization<br/>
@@ -411,6 +489,15 @@ def generate_pdf_report(dataset, target_column, detected_issues, preprocessing_d
     • Try ensemble methods (stacking, voting)<br/>
     • Perform k-fold cross-validation<br/>
     • Monitor model performance in production<br/>
+    """
+    
+    if n_classes > 2:
+        recommendations += "<br/><b>Multiclass-Specific Recommendations:</b><br/>"
+        recommendations += "• Analyze One-vs-Rest (OvR) ROC curves for class-specific performance<br/>"
+        recommendations += "• Review One-vs-One (OvO) comparisons to identify confusing class pairs<br/>"
+        recommendations += "• Consider class-specific threshold tuning<br/>"
+    
+    recommendations += """
     <br/>
     <b>Next Steps:</b><br/>
     • Deploy the best model to production environment<br/>
@@ -424,7 +511,7 @@ def generate_pdf_report(dataset, target_column, detected_issues, preprocessing_d
     # Footer
     elements.append(Spacer(1, 0.5*inch))
     elements.append(Paragraph(
-        "<i>This report was automatically generated by the AutoML Classification System.</i>", 
+        "<i>This report was automatically generated by the Enhanced AutoML Classification System.</i>", 
         styles['Italic']
     ))
     
@@ -439,7 +526,10 @@ def generate_pdf_report(dataset, target_column, detected_issues, preprocessing_d
 
 def generate_report_content(dataset, target_column, detected_issues, 
                            preprocessing_decisions, model_results):
-    """Generate the report content in Markdown format"""
+    """Generate the report content in Markdown format with enhanced metrics"""
+    
+    n_classes = dataset[target_column].nunique()
+    problem_type = "Binary Classification" if n_classes == 2 else f"Multiclass Classification ({n_classes} classes)"
     
     report = f"""
 # AutoML Classification Report
@@ -452,17 +542,15 @@ def generate_report_content(dataset, target_column, detected_issues,
 
 This report presents the results of an automated machine learning pipeline for classification tasks. 
 The system analyzed the dataset, detected data quality issues, applied preprocessing steps, 
-trained multiple classification models, and identified the best-performing model.
+trained multiple classification models, and identified the best-performing model using a comprehensive tiebreaker hierarchy.
 
 ### Key Findings
 
 """
     
-    # Best model summary
+    # Best model summary using enhanced selection
     if model_results:
-        best_model = max(model_results.items(), key=lambda x: x[1]['f1_score'])
-        best_model_name = best_model[0]
-        best_model_metrics = best_model[1]
+        best_model_name, best_model_metrics = get_best_model(model_results)
         
         report += f"""
 **Best Model:** {best_model_name}
@@ -472,10 +560,15 @@ trained multiple classification models, and identified the best-performing model
 - **F1-Score:** {best_model_metrics['f1_score']:.4f}
 """
         
-        if best_model_metrics['roc_auc']:
+        if best_model_metrics['roc_auc'] is not None:
             report += f"- **ROC-AUC:** {best_model_metrics['roc_auc']:.4f}\n"
         
+        if best_model_metrics.get('mcc') is not None:
+            report += f"- **MCC (Matthews Correlation Coefficient):** {best_model_metrics.get('mcc'):.4f}\n"
+        
         report += f"- **Training Time:** {best_model_metrics['training_time']:.2f} seconds\n"
+        
+        report += f"\n**Selection Criteria:** The model was selected using a tiebreaker hierarchy: F1-Score → ROC-AUC → MCC → Accuracy → Training Time\n"
     
     # Dataset overview
     report += f"""
@@ -489,7 +582,8 @@ trained multiple classification models, and identified the best-performing model
 - **Total Samples:** {len(dataset):,}
 - **Total Features:** {len(dataset.columns) - 1}
 - **Target Variable:** {target_column}
-- **Number of Classes:** {dataset[target_column].nunique()}
+- **Number of Classes:** {n_classes}
+- **Problem Type:** {problem_type}
 
 ### Feature Types
 
@@ -597,7 +691,7 @@ The following preprocessing steps were applied:
         "6. **Train-Test Split:** Split dataset for model validation"
     ]
     
-    for  step in preprocessing_steps:
+    for step in preprocessing_steps:
         report += f"{step}\n"
     
     # Model configurations
@@ -627,12 +721,15 @@ The following classification models were trained with hyperparameter optimizatio
             report += f"- Recall: {results['recall']:.4f}\n"
             report += f"- F1-Score: {results['f1_score']:.4f}\n"
             
-            if results['roc_auc']:
+            if results['roc_auc'] is not None:
                 report += f"- ROC-AUC: {results['roc_auc']:.4f}\n"
+            
+            if results.get('mcc') is not None:
+                report += f"- MCC: {results.get('mcc'):.4f}\n"
             
             report += f"- Training Time: {results['training_time']:.2f}s\n"
     
-    # Model comparison
+    # Model comparison with enhanced metrics
     report += f"""
 
 ---
@@ -644,18 +741,55 @@ The following classification models were trained with hyperparameter optimizatio
 """
     
     if model_results:
-        report += "| Model | Accuracy | Precision | Recall | F1-Score | Training Time |\n"
-        report += "|-------|----------|-----------|--------|----------|---------------|\n"
+        report += "| Model | Accuracy | Precision | Recall | F1-Score | ROC-AUC | MCC | Time(s) |\n"
+        report += "|-------|----------|-----------|--------|----------|---------|-----|----------|\n"
         
-        # Sort by F1-score
-        sorted_models = sorted(model_results.items(), key=lambda x: x[1]['f1_score'], reverse=True)
+        # Sort by tiebreaker hierarchy
+        sorted_models_list = []
+        for name, results in model_results.items():
+            sorted_models_list.append((name, results))
         
-        for model_name, results in sorted_models:
+        sorted_models_list.sort(
+            key=lambda x: (
+                x[1]['f1_score'],
+                x[1]['roc_auc'] if x[1]['roc_auc'] is not None else -1,
+                x[1].get('mcc', -1) if x[1].get('mcc') is not None else -1,
+                x[1]['accuracy'],
+                -x[1]['training_time']
+            ),
+            reverse=True
+        )
+        
+        for model_name, results in sorted_models_list:
+            roc_auc_str = f"{results['roc_auc']:.4f}" if results['roc_auc'] is not None else 'N/A'
+            mcc_str = f"{results.get('mcc'):.4f}" if results.get('mcc') is not None else 'N/A'
+            
             report += f"| {model_name} | {results['accuracy']:.4f} | "
             report += f"{results['precision']:.4f} | {results['recall']:.4f} | "
-            report += f"{results['f1_score']:.4f} | {results['training_time']:.2f}s |\n"
+            report += f"{results['f1_score']:.4f} | {roc_auc_str} | {mcc_str} | "
+            report += f"{results['training_time']:.2f}s |\n"
+        
+        # Add metric descriptions
+        report += f"""
+
+### Metric Descriptions
+
+- **ROC-AUC (Area Under ROC Curve):** Measures the model's ability to distinguish between classes. Range: 0.5 (random) to 1.0 (perfect). {"Calculated using One-vs-Rest macro-average for multiclass." if n_classes > 2 else ""}
+- **MCC (Matthews Correlation Coefficient):** Balanced measure considering all confusion matrix values. Range: -1 (complete disagreement) to +1 (perfect prediction). Especially useful for imbalanced datasets.
+
+### Tiebreaker Hierarchy
+
+Models are ranked using the following priority:
+1. **F1-Score** (primary) - Balances precision and recall
+2. **ROC-AUC** (1st tiebreaker) - Overall discrimination ability
+3. **MCC** (2nd tiebreaker) - Balanced measure for imbalanced data
+4. **Accuracy** (3rd tiebreaker) - Overall correctness
+5. **Training Time** (final tiebreaker) - Efficiency (lower is better)
+
+This ensures optimal model selection even when performance metrics are equal.
+"""
     
-    # Best model summary
+    # Best model summary with enhanced justification
     report += f"""
 
 ---
@@ -665,20 +799,32 @@ The following classification models were trained with hyperparameter optimizatio
 """
     
     if model_results:
-        best_model = max(model_results.items(), key=lambda x: x[1]['f1_score'])
-        best_model_name = best_model[0]
-        best_model_metrics = best_model[1]
+        best_model_name, best_model_metrics = get_best_model(model_results)
         
         report += f"### Recommended Model: **{best_model_name}**\n\n"
         
-        report += "#### Justification\n\n"
-        report += f"The {best_model_name} was selected as the best model based on the following criteria:\n\n"
-        report += f"1. **Highest F1-Score:** {best_model_metrics['f1_score']:.4f} - "
-        report += "indicating the best balance between precision and recall\n"
-        report += f"2. **Accuracy:** {best_model_metrics['accuracy']:.4f} - "
-        report += "demonstrating strong overall performance\n"
-        report += f"3. **Training Efficiency:** {best_model_metrics['training_time']:.2f}s - "
-        report += "reasonable training time\n\n"
+        report += "#### Selection Justification\n\n"
+        report += f"The {best_model_name} was selected using our tiebreaker hierarchy:\n\n"
+        report += f"1. **F1-Score:** {best_model_metrics['f1_score']:.4f} - Primary metric balancing precision and recall\n"
+        
+        if best_model_metrics['roc_auc'] is not None:
+            report += f"2. **ROC-AUC:** {best_model_metrics['roc_auc']:.4f} - {'Multiclass discrimination using OvR macro-average' if n_classes > 2 else 'Binary discrimination ability'}\n"
+        
+        if best_model_metrics.get('mcc') is not None:
+            report += f"3. **MCC:** {best_model_metrics.get('mcc'):.4f} - Balanced performance measure\n"
+        
+        report += f"4. **Accuracy:** {best_model_metrics['accuracy']:.4f} - Overall correctness\n"
+        report += f"5. **Training Time:** {best_model_metrics['training_time']:.2f}s - Computational efficiency\n\n"
+        
+        if n_classes > 2:
+            report += f"""
+#### Multiclass Performance Notes
+
+For this {n_classes}-class problem:
+- ROC-AUC uses One-vs-Rest (OvR) macro-averaging
+- Consider reviewing per-class metrics in the detailed analysis
+- OvR and OvO ROC curves provide insights into class separability
+"""
         
         report += "#### Confusion Matrix\n\n"
         cm = best_model_metrics['confusion_matrix']
@@ -690,9 +836,14 @@ The following classification models were trained with hyperparameter optimizatio
         report += "- Use this model for production predictions\n"
         report += "- Monitor model performance regularly\n"
         report += "- Retrain with new data when available\n"
+        
+        if n_classes > 2:
+            report += "- Analyze class-specific performance using OvR/OvO ROC curves\n"
+            report += "- Consider per-class threshold tuning if needed\n"
+        
         report += "- Consider ensemble methods for further improvement\n"
     
-    # Conclusions
+    # Conclusions with problem-specific insights
     report += f"""
 
 ---
@@ -702,30 +853,47 @@ The following classification models were trained with hyperparameter optimizatio
 ### Key Takeaways
 
 1. Successfully trained and evaluated {len(model_results) if model_results else 0} classification models
-2. Identified {best_model_name if model_results else 'N/A'} as the best-performing model
+2. Identified {best_model_name if model_results else 'N/A'} as the best-performing model using comprehensive tiebreaker hierarchy
 3. Achieved {best_model_metrics['f1_score']:.2%} F1-score on the test set
+"""
+    
+    if n_classes > 2:
+        report += f"4. Multiclass problem ({n_classes} classes) handled with One-vs-Rest ROC-AUC calculation\n"
+    
+    report += """
 
 ### Recommendations for Improvement
 
 - Collect more training data to improve model generalization
 - Explore feature engineering techniques
 - Try ensemble methods (e.g., stacking, voting)
-- Perform cross-validation for more robust evaluation
-- Monitor model performance in production
+- Perform k-fold cross-validation for more robust evaluation
+"""
+    
+    if n_classes > 2:
+        report += "- Analyze One-vs-Rest and One-vs-One ROC curves for class-specific insights\n"
+        report += "- Identify and address confusing class pairs\n"
+    
+    report += """- Monitor model performance in production
 - Consider domain-specific features
 
 ### Next Steps
 
 1. Deploy the best model to production
-2. Set up monitoring and logging
+2. Set up monitoring and logging infrastructure
 3. Create a feedback loop for continuous improvement
 4. Document model assumptions and limitations
-
+"""
+    
+    if n_classes > 2:
+        report += "5. Review multiclass ROC analysis (OvR/OvO) for deeper insights\n"
+    
+    report += """
 ---
 
 **Report End**
 
-*This report was automatically generated by the AutoML Classification System.*
+*This report was automatically generated by the Enhanced AutoML Classification System with comprehensive multiclass support.*
 """
     
     return report
@@ -806,6 +974,12 @@ def markdown_to_html(markdown_content):
             border-left: 4px solid #3498db;
             margin: 10px 0;
         }}
+        .info-box {{
+            background-color: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 15px 0;
+        }}
         hr {{
             border: none;
             border-top: 2px solid #eee;
@@ -824,7 +998,7 @@ def markdown_to_html(markdown_content):
     return html
 
 def generate_results_csv(model_results):
-    """Generate CSV with model results"""
+    """Generate CSV with model results including enhanced metrics"""
     
     if not model_results:
         return ""
@@ -837,9 +1011,25 @@ def generate_results_csv(model_results):
             'Precision': results['precision'],
             'Recall': results['recall'],
             'F1_Score': results['f1_score'],
-            'ROC_AUC': results['roc_auc'] if results['roc_auc'] else 'N/A',
+            'ROC_AUC': results['roc_auc'] if results['roc_auc'] is not None else 'N/A',
+            'MCC': results.get('mcc') if results.get('mcc') is not None else 'N/A',
             'Training_Time_Seconds': results['training_time']
         })
     
     df = pd.DataFrame(data)
+    
+    # Sort by tiebreaker hierarchy
+    df['F1_numeric'] = pd.to_numeric(df['F1_Score'])
+    df['ROC_AUC_numeric'] = pd.to_numeric(df['ROC_AUC'], errors='coerce').fillna(-1)
+    df['MCC_numeric'] = pd.to_numeric(df['MCC'], errors='coerce').fillna(-1)
+    df['Accuracy_numeric'] = pd.to_numeric(df['Accuracy'])
+    
+    df = df.sort_values(
+        by=['F1_numeric', 'ROC_AUC_numeric', 'MCC_numeric', 'Accuracy_numeric', 'Training_Time_Seconds'],
+        ascending=[False, False, False, False, True]
+    )
+    
+    # Drop helper columns
+    df = df.drop(['F1_numeric', 'ROC_AUC_numeric', 'MCC_numeric', 'Accuracy_numeric'], axis=1)
+    
     return df.to_csv(index=False)
