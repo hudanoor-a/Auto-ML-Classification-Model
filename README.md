@@ -7,7 +7,7 @@ An intelligent, end-to-end automated machine learning system for classification 
 ![Streamlit](https://img.shields.io/badge/Streamlit-1.28.0-red)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Overview](#overview)
 - [Features](#features)
@@ -20,7 +20,7 @@ An intelligent, end-to-end automated machine learning system for classification 
 - [Contributing](#contributing)
 - [License](#license)
 
-## 🎯 Overview
+## Overview
 
 This AutoML system automates the entire machine learning workflow for classification problems, from data upload to model deployment. It features:
 
@@ -32,15 +32,15 @@ This AutoML system automates the entire machine learning workflow for classifica
 - **Interactive Dashboards**: Beautiful visualizations for model comparison
 - **Report Generation**: Downloadable reports in HTML, Markdown, and CSV formats
 
-## ✨ Features
+## Features
 
-### 📁 Dataset Management
+### Dataset Management
 - CSV file upload
 - Support for built-in sample datasets (Iris, Wine, Titanic)
 - Comprehensive dataset statistics and metadata
 - Class distribution analysis
 
-### 📊 Exploratory Data Analysis
+### Exploratory Data Analysis
 - **Missing Value Analysis**: Per-feature and global missing data detection
 - **Outlier Detection**: IQR and Z-score methods
 - **Correlation Analysis**: Heatmaps and correlation matrices
@@ -48,7 +48,7 @@ This AutoML system automates the entire machine learning workflow for classifica
 - **Categorical Analysis**: Bar charts and cross-tabulation
 - **Train/Test Split**: Configurable split ratios
 
-### ⚠️ Intelligent Issue Detection
+### Intelligent Issue Detection
 The system automatically detects and flags:
 - Missing values
 - Outliers
@@ -62,7 +62,7 @@ For each issue, the system:
 2. Suggests appropriate fixes
 3. Asks for user confirmation before applying changes
 
-### ⚙️ Preprocessing Pipeline
+### Preprocessing Pipeline
 - **Missing Value Treatment**: Mean, median, mode, or constant imputation
 - **Outlier Handling**: Removal, capping (Winsorization), or retention
 - **Feature Scaling**: StandardScaler or MinMaxScaler
@@ -70,7 +70,7 @@ For each issue, the system:
 - **Class Balancing**: SMOTE, class weights, or undersampling
 - **Train-Test Split**: User-configurable with stratification
 
-### 🎯 Model Training
+### Model Training
 
 The system trains and optimizes 7 classification algorithms:
 
@@ -87,7 +87,7 @@ The system trains and optimizes 7 classification algorithms:
 - Randomized Search CV
 - Configurable cross-validation folds
 
-### 📈 Model Evaluation
+### Model Evaluation
 
 Each model reports:
 - ✅ Accuracy
@@ -97,7 +97,7 @@ Each model reports:
 - ⏱️ Training Time
 - 📑 Detailed classification report
 
-### 📊 Model Comparison Dashboard
+### Model Comparison Dashboard
 
 Interactive visualizations include:
 - Metrics comparison bar charts
@@ -107,7 +107,7 @@ Interactive visualizations include:
 - ROC curves with AUC scores
 - Downloadable comparison table (CSV)
 
-### 📄 Auto-Generated Reports
+### Auto-Generated Reports
 
 Comprehensive reports include:
 1. Dataset overview and statistics
@@ -120,11 +120,12 @@ Comprehensive reports include:
 8. Recommendations for improvement
 
 **Export Formats:**
-- 📝 Markdown (.md)
-- 🌐 HTML (styled)
-- 📊 CSV (results only)
+- Markdown (.md)
+- HTML (styled)
+- CSV (results only)
+- PDF
 
-## 🚀 Installation
+## Installation
 
 ### Prerequisites
 
@@ -167,48 +168,48 @@ Comprehensive reports include:
 
 The application will open in your default browser at `http://localhost:8501`
 
-## 📖 Usage
+## Usage
 
 ### Step-by-Step Guide
 
 1. **Upload Dataset**
-   - Navigate to "📁 Dataset Upload"
+   - Navigate to "Dataset Upload"
    - Upload your CSV file or select a sample dataset
    - Choose your target column
 
 2. **Explore Data**
-   - Go to "📊 Exploratory Data Analysis"
+   - Go to "Exploratory Data Analysis"
    - Review missing values, outliers, correlations, and distributions
    - Configure train/test split ratio
 
 3. **Detect & Fix Issues**
-   - Visit "⚠️ Issue Detection & Fixing"
+   - Visit "Issue Detection & Fixing"
    - Review detected issues
    - Select fixes for each issue
    - Confirm your decisions
 
 4. **Preprocess Data**
-   - Navigate to "⚙️ Preprocessing"
+   - Navigate to "Preprocessing"
    - Configure preprocessing options
    - Review preprocessing summary
 
 5. **Train Models**
-   - Go to "🎯 Model Training"
+   - Go to "Model Training"
    - Select optimization method
    - Choose models to train
    - Click "Start Training"
 
 6. **Compare Results**
-   - Visit "📈 Model Comparison"
+   - Visit "Model Comparison"
    - Explore interactive visualizations
    - Download comparison results
 
 7. **Generate Report**
-   - Navigate to "📄 Final Report"
+   - Navigate to "Final Report"
    - Review the comprehensive report
    - Download in your preferred format
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 AutoML/
@@ -290,7 +291,7 @@ AutoML/
 ### Report Generation
 ![Report Screenshot]
 
-## 🌐 Deployment
+## Deployment
 
 ### Streamlit Cloud Deployment
 
@@ -316,9 +317,9 @@ AutoML/
 
 ### Hosted App Link
 
-🔗 **Live Demo**: [Your Streamlit Cloud URL]
+**Live Demo**: [Your Streamlit Cloud URL]
 
-## 🛠️ Development
+## Development
 
 ### Adding New Models
 
@@ -334,14 +335,14 @@ Edit `utils/preprocessor.py` to add:
 - Additional encoding methods
 - Feature engineering steps
 
-## 📊 Performance Tips
+## Performance Tips
 
 1. **Large Datasets**: Use Randomized Search instead of Grid Search
 2. **Memory Issues**: Reduce cross-validation folds
 3. **Speed**: Disable SMOTE for very large datasets
 4. **Accuracy**: Try ensemble methods and feature engineering
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Please:
 
@@ -351,22 +352,22 @@ Contributions are welcome! Please:
 4. Push to branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
 
-## 📝 License
+## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 👥 Authors
+## Authors
 
 - **Your Name** - Initial work
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - Scikit-learn for machine learning algorithms
 - Streamlit for the amazing web framework
 - Plotly and Seaborn for visualizations
 - The open-source community
 
-## 📧 Contact
+## Contact
 
 For questions or feedback, please reach out:
 - Email: your.email@example.com
@@ -374,4 +375,4 @@ For questions or feedback, please reach out:
 
 ---
 
-**Built with ❤️ using Streamlit**
+**Built using Streamlit**
